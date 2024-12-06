@@ -31,4 +31,11 @@ public class ScheduleOptaPlanner {
         this.courseGroup = courseGroup;
     }
 
+    @Override
+    public String toString() {
+        return "ScheduleOptaPlanner{" +
+                "courseGroup='" + courseGroup + '\'' +
+                ", dayAndTimes=" + dayAndTimes +
+                '}';
+    }
 }

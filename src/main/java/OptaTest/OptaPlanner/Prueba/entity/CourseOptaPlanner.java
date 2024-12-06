@@ -57,4 +57,13 @@ public class CourseOptaPlanner {
         this.courseName = courseName;
     }
 
+    @Override
+    public String toString() {
+        return "CourseOptaPlanner{" +
+                "id=" + id +
+                ", AssignedSchedule=" + AssignedSchedule +
+                ", availableSchedules=" + availableSchedules +
+                ", courseName='" + courseName + '\'' +
+                '}';
+    }
 }
