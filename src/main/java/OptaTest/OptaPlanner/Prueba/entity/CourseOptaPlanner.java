@@ -56,4 +56,5 @@ public class CourseOptaPlanner {
     public void setCourseName(String courseName) {
         this.courseName = courseName;
     }
+
 }

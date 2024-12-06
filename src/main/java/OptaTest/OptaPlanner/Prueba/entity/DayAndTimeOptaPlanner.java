@@ -41,4 +41,13 @@ public class DayAndTimeOptaPlanner {
     public void setEndTime(LocalTime endTime) {
         this.endTime = endTime;
     }
+
+    @Override
+    public String toString() {
+        return "DayAndTimeOptaPlanner{" +
+                "day=" + day +
+                ", startTime=" + startTime +
+                ", endTime=" + endTime +
+                '}';
+    }
 }

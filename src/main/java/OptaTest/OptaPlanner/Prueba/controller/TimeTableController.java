@@ -1,5 +1,5 @@
 package OptaTest.OptaPlanner.Prueba.controller;
-
+import OptaTest.OptaPlanner.Prueba.dto.ScheduleAssignedDTO;
 import OptaTest.OptaPlanner.Prueba.entity.CourseOptaPlanner;
 import OptaTest.OptaPlanner.Prueba.entity.TimeTableConstraintProvider;
 import OptaTest.OptaPlanner.Prueba.entity.TimeTableOptaPlanner;
@@ -8,17 +8,17 @@ import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import org.optaplanner.core.api.solver.Solver;
 import org.optaplanner.core.api.solver.SolverFactory;
-import org.optaplanner.core.api.solver.SolverJob;
-import org.optaplanner.core.api.solver.SolverManager;
 import org.optaplanner.core.config.solver.SolverConfig;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Duration;
-import java.util.UUID;
-import java.util.concurrent.ExecutionException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @AllArgsConstructor
@@ -42,9 +42,43 @@ public class TimeTableController {
         Solver<TimeTableOptaPlanner> solver = solverFactory.buildSolver();
 
         TimeTableOptaPlanner solvedTimeTable = solver.solve(problem);
+
         return solvedTimeTable;
 
     }
 
+    @PostMapping("/solver")
+    public ResponseEntity<List<ScheduleAssignedDTO>> solver(@RequestBody TimeTableOptaPlanner problem){
+
+        SolverFactory<TimeTableOptaPlanner> solverFactory = SolverFactory.create(solverConfig);
+        Solver<TimeTableOptaPlanner> solver = solverFactory.buildSolver();
+
+        TimeTableOptaPlanner solvedTimeTable = solver.solve(problem);
+        List<ScheduleAssignedDTO> assignedCoursesList = new ArrayList<>();
+        mapperTimeTableToAssignedCoursesList(solvedTimeTable, assignedCoursesList);
+        System.out.println(solvedTimeTable.getScore().toString());
+        return ResponseEntity.ok(assignedCoursesList);
+
+    }
+
+    //Esto no deberia ir aqui, pero por fines de prueba lo dejo
+    private static void  mapperTimeTableToAssignedCoursesList(TimeTableOptaPlanner solvedTimeTable, List<ScheduleAssignedDTO> assignedCoursesList) {
+        solvedTimeTable.getCourses().forEach(
+                c -> {
+                    ScheduleAssignedDTO scheduleAssignedDTO = new ScheduleAssignedDTO();
+                    scheduleAssignedDTO.setCourseName(c.getCourseName());
+                    scheduleAssignedDTO.setCourseGroup(c.getAssignedSchedule().getCourseGroup());
+                    String days = c.getAssignedSchedule().getDayAndTimes().stream()
+                            .map(dayAndTime -> dayAndTime.getDay().toString())
+                            .collect(Collectors.joining(", "));
+                    scheduleAssignedDTO.setDay(days);
+                    String hours = c.getAssignedSchedule().getDayAndTimes().stream()
+                                    .map(dayAndTime -> dayAndTime.getStartTime().toString().concat("-").concat(dayAndTime.getEndTime().toString()))
+                                            .collect(Collectors.joining(", "));
+                    scheduleAssignedDTO.setHour(hours);
+                    assignedCoursesList.add(scheduleAssignedDTO);
+                }
+        );
+    }
 
 }

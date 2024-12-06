@@ -43,4 +43,5 @@ public class TimeTableOptaPlanner {
     public void setScore(HardSoftScore score) {
         this.score = score;
     }
+
 }

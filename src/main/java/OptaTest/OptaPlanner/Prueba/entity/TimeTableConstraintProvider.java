@@ -12,10 +12,11 @@ import java.util.List;
 public class TimeTableConstraintProvider implements ConstraintProvider {
     @Override
     public Constraint[] defineConstraints(ConstraintFactory constraintFactory) {
-        return new Constraint[] {
-                avoidScheduleOverlap(constraintFactory)
-               // minimizeTimeGaps(constraintFactory)
+        Constraint[] constraint = new Constraint[] {
+                avoidScheduleOverlap(constraintFactory),
+                minimizeScheduleValue(constraintFactory)
         };
+        return constraint;
     }
 
     // Restricción dura: evitar la superposición de horarios
@@ -45,24 +46,50 @@ public class TimeTableConstraintProvider implements ConstraintProvider {
                 .asConstraint("Superposición de horarios");
     }
 
-    // Restricción blanda: minimizar espacios entre horarios
-    private Constraint minimizeTimeGaps(ConstraintFactory constraintFactory) {
-        return constraintFactory.forEach(CourseOptaPlanner.class)
-                .join(CourseOptaPlanner.class,
-                        Joiners.filtering((course1, course2) -> !course1.equals(course2)))
-                .penalize(HardSoftScore.ONE_SOFT,
-                        (course1, course2) -> {
-                            ScheduleOptaPlanner schedule1 = course1.getAssignedSchedule();
-                            ScheduleOptaPlanner schedule2 = course2.getAssignedSchedule();
 
-                            if (schedule1 == null || schedule2 == null) {
-                                return 0;
+    // Restricción blanda: minimizar espacios entre horarios
+//    private Constraint minimizeTimeGaps(ConstraintFactory constraintFactory) {
+//        return constraintFactory.forEach(CourseOptaPlanner.class)
+//                .join(CourseOptaPlanner.class,
+//                        Joiners.filtering((course1, course2) -> !course1.equals(course2)))
+//                .penalize(HardSoftScore.ONE_SOFT,
+//                        (course1, course2) -> {
+//                            ScheduleOptaPlanner schedule1 = course1.getAssignedSchedule();
+//                            ScheduleOptaPlanner schedule2 = course2.getAssignedSchedule();
+//
+//                            if (schedule1 == null || schedule2 == null) {
+//                                return 0;
+//                            }
+//
+//                            return calculateGapBetweenSchedules(schedule1, schedule2);
+//                        })
+//                .asConstraint("Minimizar huecos entre horarios");
+//    }
+
+
+    private Constraint minimizeScheduleValue(ConstraintFactory constraintFactory) {
+        return constraintFactory.forEach(CourseOptaPlanner.class)
+                .penalize(HardSoftScore.ONE_SOFT,
+                        course -> {
+                            ScheduleOptaPlanner schedule = course.getAssignedSchedule();
+                            if (schedule == null) {
+                                return 0; // Si no hay horario asignado, no penalizamos
                             }
 
-                            return calculateGapBetweenSchedules(schedule1, schedule2);
+                            // Sumar las horas de inicio y fin de cada horario
+                            return schedule.getDayAndTimes().stream()
+                                    .mapToInt(dayAndTime -> convertTimeToInt(dayAndTime.getStartTime()) +
+                                            convertTimeToInt(dayAndTime.getEndTime()))
+                                    .sum();
                         })
-                .asConstraint("Minimizar huecos entre horarios");
+                .asConstraint("Minimizar valor total de horarios");
     }
+
+    // Metodo para convertir horas (HH:mm:ss) a un entero (HHmm)
+    private int convertTimeToInt(java.time.LocalTime time) {
+        return time.getHour() * 100 + time.getMinute();
+    }
+
 
     private int calculateGapBetweenSchedules(ScheduleOptaPlanner schedule1, ScheduleOptaPlanner schedule2) {
         int minGap = Integer.MAX_VALUE;
