@@ -1,11 +1,10 @@
 package OptaTest.OptaPlanner.Prueba.controller;
 import OptaTest.OptaPlanner.Prueba.dto.ScheduleAssignedDTO;
-import OptaTest.OptaPlanner.Prueba.entity.CourseOptaPlanner;
-import OptaTest.OptaPlanner.Prueba.entity.TimeTableConstraintProvider;
-import OptaTest.OptaPlanner.Prueba.entity.TimeTableOptaPlanner;
+import OptaTest.OptaPlanner.Prueba.entity.*;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
+import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
 import org.optaplanner.core.api.solver.Solver;
 import org.optaplanner.core.api.solver.SolverFactory;
 import org.optaplanner.core.config.solver.SolverConfig;
@@ -15,9 +14,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.DayOfWeek;
 import java.time.Duration;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
@@ -48,18 +50,31 @@ public class TimeTableController {
     }
 
     @PostMapping("/solver")
-    public ResponseEntity<List<ScheduleAssignedDTO>> solver(@RequestBody TimeTableOptaPlanner problem){
+    public ResponseEntity<List<ScheduleAssignedDTO>> solver(@RequestBody TimeTableOptaPlanner problem) {
 
         SolverFactory<TimeTableOptaPlanner> solverFactory = SolverFactory.create(solverConfig);
         Solver<TimeTableOptaPlanner> solver = solverFactory.buildSolver();
 
+
+
+        //System.out.println(problem.getCourses().toString());
+        problem.sortSchedules();
+        //System.out.println(problem.getCourses().toString());
         TimeTableOptaPlanner solvedTimeTable = solver.solve(problem);
+        System.out.println(solvedTimeTable.getCourses().toString());
+
+
+        // Mapear la solución a DTOs
         List<ScheduleAssignedDTO> assignedCoursesList = new ArrayList<>();
         mapperTimeTableToAssignedCoursesList(solvedTimeTable, assignedCoursesList);
-        System.out.println(solvedTimeTable.getScore().toString());
-        return ResponseEntity.ok(assignedCoursesList);
 
+
+        System.out.println(solvedTimeTable.getScore().toString());
+
+        return ResponseEntity.ok(assignedCoursesList);
     }
+
+
 
     //Esto no deberia ir aqui, pero por fines de prueba lo dejo
     private static void  mapperTimeTableToAssignedCoursesList(TimeTableOptaPlanner solvedTimeTable, List<ScheduleAssignedDTO> assignedCoursesList) {
@@ -80,5 +95,8 @@ public class TimeTableController {
                 }
         );
     }
+
+
+
 
 }

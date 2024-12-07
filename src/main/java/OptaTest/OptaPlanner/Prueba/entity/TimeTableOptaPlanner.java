@@ -11,6 +11,7 @@ import org.optaplanner.core.api.domain.valuerange.ValueRangeProvider;
 import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -42,6 +43,15 @@ public class TimeTableOptaPlanner {
 
     public void setScore(HardSoftScore score) {
         this.score = score;
+    }
+
+    public void sortSchedules() {
+        for (CourseOptaPlanner course : courses) {
+            // Ordenar los horarios disponibles de cada curso
+            course.getAvailableSchedules().sort(Comparator.comparing(schedule ->
+                    schedule.getDayAndTimes().get(0).getStartTime()));
+            //System.out.println("Horarios de " + course.getCourseName() + ": " + course.getAvailableSchedules());
+        }
     }
 
 }

@@ -11,7 +11,7 @@ import java.time.LocalTime;
 
 @AllArgsConstructor
 @NoArgsConstructor
-public class DayAndTimeOptaPlanner {
+public class DayAndTimeOptaPlanner implements Comparable<DayAndTimeOptaPlanner>{
 
     private DayOfWeek day;
     private LocalTime startTime;
@@ -49,5 +49,19 @@ public class DayAndTimeOptaPlanner {
                 ", startTime=" + startTime +
                 ", endTime=" + endTime +
                 '}';
+    }
+
+    public boolean overlaps(DayAndTimeOptaPlanner other) {
+        return day.equals(other.day) &&
+                !(endTime.isBefore(other.startTime) || startTime.isAfter(other.endTime));
+    }
+
+    @Override
+    public int compareTo(DayAndTimeOptaPlanner other) {
+        int dayComparison = day.compareTo(other.day);
+        if (dayComparison != 0) {
+            return dayComparison;
+        }
+        return startTime.compareTo(other.startTime);
     }
 }

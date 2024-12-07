@@ -10,13 +10,16 @@ import java.time.Duration;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class TimeTableConstraintProvider implements ConstraintProvider {
     @Override
     public Constraint[] defineConstraints(ConstraintFactory constraintFactory) {
         Constraint[] constraint = new Constraint[] {
-                avoidScheduleOverlap(constraintFactory),
-                minimizeTimeGaps(constraintFactory),
+                noOverlapConstraint(constraintFactory),
+                minimizeDistanceBetweenCourses(constraintFactory)
+                //avoidScheduleOverlap(constraintFactory),
+                //minimizeTimeGaps(constraintFactory),
                 //compactSchedules(constraintFactory)
         };
         return constraint;
@@ -51,23 +54,36 @@ public class TimeTableConstraintProvider implements ConstraintProvider {
 
 
      //Restricción blanda: minimizar espacios entre horarios
-    private Constraint minimizeTimeGaps(ConstraintFactory constraintFactory) {
-        return constraintFactory.forEach(CourseOptaPlanner.class)
-                .join(CourseOptaPlanner.class,
-                        Joiners.filtering((course1, course2) -> !course1.equals(course2)))
-                .penalize(HardSoftScore.ONE_SOFT,
-                        (course1, course2) -> {
-                            ScheduleOptaPlanner schedule1 = course1.getAssignedSchedule();
-                            ScheduleOptaPlanner schedule2 = course2.getAssignedSchedule();
+     private Constraint minimizeTimeGaps(ConstraintFactory constraintFactory) {
+         return constraintFactory.forEachUniquePair(CourseOptaPlanner.class)
+                 .penalize(HardSoftScore.ONE_SOFT, (course1, course2) -> {
+                     List<DayAndTimeOptaPlanner> combinedDayAndTimes = Stream.concat(
+                                     course1.getAssignedSchedule().getDayAndTimes().stream(),
+                                     course2.getAssignedSchedule().getDayAndTimes().stream()
+                             )
+                             .distinct() // Evitar duplicados
+                             .sorted(Comparator.comparing(DayAndTimeOptaPlanner::getDay)
+                                     .thenComparing(DayAndTimeOptaPlanner::getStartTime))
+                             .toList();
 
-                            if (schedule1 == null || schedule2 == null) {
-                                return 0;
-                            }
+                     long totalGapMinutes = 0;
 
-                            return calculateGapBetweenSchedules(schedule1, schedule2);
-                        })
-                .asConstraint("Minimizar huecos entre horarios");
-    }
+                     for (int i = 0; i < combinedDayAndTimes.size() - 1; i++) {
+                         DayAndTimeOptaPlanner current = combinedDayAndTimes.get(i);
+                         DayAndTimeOptaPlanner next = combinedDayAndTimes.get(i + 1);
+
+                         if (current.getDay().equals(next.getDay())) { // Comparar horarios del mismo día
+                             long gapMinutes = Duration.between(current.getEndTime(), next.getStartTime()).toMinutes();
+                             if (gapMinutes > 0) { // Penalizar solo gaps positivos
+                                 totalGapMinutes += gapMinutes;
+                             }
+                         }
+                     }
+
+                     return (int) totalGapMinutes;
+                 })
+                 .asConstraint("Minimizar espacios entre materias consecutivas en el mismo día");
+     }
 
 
 //    private Constraint minimizeScheduleValue(ConstraintFactory constraintFactory) {
@@ -109,5 +125,71 @@ public class TimeTableConstraintProvider implements ConstraintProvider {
 
         return minGap == Integer.MAX_VALUE ? 0 : minGap;
     }
+
+    private Constraint noOverlap(ConstraintFactory constraintFactory) {
+        return constraintFactory.forEachUniquePair(CourseOptaPlanner.class)
+                .filter((course1, course2) -> course1.getAssignedSchedule()
+                        .getDayAndTimes().stream().anyMatch(dayAndTime1 ->
+                                course2.getAssignedSchedule()
+                                        .getDayAndTimes().stream().anyMatch(dayAndTime1::overlaps)))
+                .penalize(HardSoftScore.ONE_HARD)
+                .asConstraint("No overlap");
+    }
+
+    Constraint noOverlapConstraint(ConstraintFactory constraintFactory) {
+        return constraintFactory.forEachUniquePair(CourseOptaPlanner.class)
+                .filter((course1, course2) -> {
+                    ScheduleOptaPlanner schedule1 = course1.getAssignedSchedule();
+                    ScheduleOptaPlanner schedule2 = course2.getAssignedSchedule();
+
+                    if (schedule1 == null || schedule2 == null) {
+                        return false; // Ignorar cursos sin horarios asignados
+                    }
+
+                    // Verificar si se solapan los horarios de los cursos
+                    for (DayAndTimeOptaPlanner dayTime1 : schedule1.getDayAndTimes()) {
+                        for (DayAndTimeOptaPlanner dayTime2 : schedule2.getDayAndTimes()) {
+                            if (dayTime1.getDay().equals(dayTime2.getDay())
+                                    && dayTime1.getStartTime().isBefore(dayTime2.getEndTime())
+                                    && dayTime1.getEndTime().isAfter(dayTime2.getStartTime())) {
+                                return true; // Existe un solapamiento
+                            }
+                        }
+                    }
+                    return false;
+                })
+                .penalize(HardSoftScore.ONE_HARD)
+                .asConstraint("No overlap");
+    }
+
+
+
+
+    private Constraint minimizeDistanceBetweenCourses(ConstraintFactory constraintFactory) {
+        return constraintFactory.forEachUniquePair(CourseOptaPlanner.class)
+                .filter((course1, course2) -> course1.getAssignedSchedule()
+                        .getDayAndTimes().stream().anyMatch(dayAndTime1 ->
+                                course2.getAssignedSchedule()
+                                        .getDayAndTimes().stream().noneMatch(dayAndTime1::overlaps)))
+                .penalize(
+                        HardSoftScore.ONE_SOFT,
+                        (course1, course2) ->
+                                calculateDistance(course1, course2))
+                .asConstraint("Minimize distance between courses");
+    }
+
+    private int calculateDistance(CourseOptaPlanner course1, CourseOptaPlanner course2) {
+        return course1.getAssignedSchedule().getDayAndTimes().stream()
+                .flatMap(dayAndTime1 -> course2.getAssignedSchedule()
+                        .getDayAndTimes().stream()
+                        .map(dayAndTime2 -> Math.abs(
+                                (int) java.time.Duration.between(
+                                        dayAndTime1.getEndTime(), dayAndTime2.getStartTime()).toMinutes())))
+                .min(Integer::compareTo)
+                .orElse(0);
+    }
+
+
+
 
 }
