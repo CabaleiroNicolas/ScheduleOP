@@ -1,15 +1,12 @@
 package OptaTest.OptaPlanner.Prueba.entity;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
-import org.optaplanner.core.api.domain.lookup.PlanningId;
 
 import java.util.ArrayList;
 
 @AllArgsConstructor
 @NoArgsConstructor
 public class ScheduleOptaPlanner {
-    @JsonProperty("couseGroup")
     private String courseGroup;
 
     private ArrayList<DayAndTimeOptaPlanner> dayAndTimes;
