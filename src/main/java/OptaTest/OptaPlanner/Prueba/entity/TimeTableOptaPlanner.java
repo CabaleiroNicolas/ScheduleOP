@@ -7,13 +7,11 @@ import lombok.Setter;
 import org.optaplanner.core.api.domain.solution.PlanningEntityCollectionProperty;
 import org.optaplanner.core.api.domain.solution.PlanningScore;
 import org.optaplanner.core.api.domain.solution.PlanningSolution;
-import org.optaplanner.core.api.domain.valuerange.ValueRangeProvider;
 import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
 
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @PlanningSolution
 @Getter
@@ -28,6 +26,7 @@ public class TimeTableOptaPlanner {
 
     @PlanningScore
     private HardSoftScore score;
+
 
     public ArrayList<CourseOptaPlanner> getCourses() {
         return courses;
@@ -44,6 +43,7 @@ public class TimeTableOptaPlanner {
     public void setScore(HardSoftScore score) {
         this.score = score;
     }
+
 
     public void sortSchedules() {
         for (CourseOptaPlanner course : courses) {

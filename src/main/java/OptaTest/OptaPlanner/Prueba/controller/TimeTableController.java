@@ -35,6 +35,7 @@ public class TimeTableController {
             .withEntityClasses(CourseOptaPlanner.class) // Clases de entidades planificables
             .withConstraintProviderClass(TimeTableConstraintProvider.class)
             .withTerminationSpentLimit(Duration.ofSeconds(5));
+
     @PostMapping("/solve")
     public TimeTableOptaPlanner solve(@RequestBody TimeTableOptaPlanner problem){
 

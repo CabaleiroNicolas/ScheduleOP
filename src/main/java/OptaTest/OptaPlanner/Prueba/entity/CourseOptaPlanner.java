@@ -25,6 +25,7 @@ public class CourseOptaPlanner {
 
     private String courseName;
 
+
     public ScheduleOptaPlanner getAssignedSchedule() {
         return AssignedSchedule;
     }
